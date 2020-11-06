@@ -118,14 +118,48 @@ max(DistanceMatrix(COI_Aln))
 
 writeXStringSet(COI_Aln, "COI_aln.fasta")
 
+writeXStringSet(RemoveGaps(COI_Aln), "COI_clean.fasta")
+
 Seqs2DB(COI_Aln, "XStringSet", "/SAN/db/Eimeria_soay_COI_aln.sql",
         identifier="allID") 
 
 tiles <- TileSeqs("/SAN/db/Eimeria_soay_COI_aln.sql")
 
 ## COI
+
+### read the primers in a format ment for
+### https://www.bioinformatics.org/sms2/primer_map.html
+### see figure "Figures/Primer_Map_COI.png"
+
+CPr <- readLines("COI_Soay_primerMan.txt")
+CPr <- lapply(CPr, strsplit, " ")
+
+PrimerCOIvec <- unlist(lapply(lapply(CPr, "[[", 1), "[", 2))
+
+PrimerCOIvec <- gsub(",", "", PrimerCOIvec)
+
+PrimersCOI <- DNAStringSet(PrimerCOIvec)
+
+names(PrimersCOI) <- unlist(lapply(lapply(CPr, "[[", 1), "[", 1))
+
+
+library(TmCalculator)
+
+sapply(PrimerCOIvec, Tm_Wallace)
+sapply(PrimerCOIvec, Tm_NN)
+sapply(PrimerCOIvec, Tm_GC)
+
+writeXStringSet(PrimersCOI, "COI_Soay_Primers.fasta")
+
+
+#### DECIPHER PRIMER DESIGN FAILS for COI
+
+
+
 COIMetaPrimers1 <- DesignPrimers(tiles, annealingTemp=60, minProductSize=300,
-                                 maxProductSize=400, numPrimerSets=3)
+                                 maxProductSize=400, numPrimerSets=3,
+                                 minGroupCoverage = 0.9999, maxDistance=0,
+                                 processors=20)
 
 COIMetaPrimers2 <- DesignPrimers(tiles, annealingTemp=60, minProductSize=300,
                                  maxProductSize=400, numPrimerSets=3,
