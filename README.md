@@ -16,7 +16,7 @@ that have one difference at least.
 ## COI Primers
 
 We align the Sequences from NCBI (only one Soay Eimeria species and
-relatives from other ungulates).
+relatives from other ruminants).
 
 I didn't get automatic design to work (because of the high divergence)
 and therefore designed primers manually based on the alignemt
