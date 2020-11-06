@@ -106,7 +106,7 @@ names(Diff_seq_primer)
 lapply(Diff_seq_primer, length)
 
 
-### PRIMERS TARGETING COI
+### PRIMERS TARGETING COI #############################################
 
 COI <- readDNAStringSet("./NCBI_data/Eimeria_Soay_COI.fasta")
 
@@ -119,13 +119,6 @@ max(DistanceMatrix(COI_Aln))
 writeXStringSet(COI_Aln, "COI_aln.fasta")
 
 writeXStringSet(RemoveGaps(COI_Aln), "COI_clean.fasta")
-
-Seqs2DB(COI_Aln, "XStringSet", "/SAN/db/Eimeria_soay_COI_aln.sql",
-        identifier="allID") 
-
-tiles <- TileSeqs("/SAN/db/Eimeria_soay_COI_aln.sql")
-
-## COI
 
 ### read the primers in a format ment for
 ### https://www.bioinformatics.org/sms2/primer_map.html
@@ -152,8 +145,12 @@ sapply(PrimerCOIvec, Tm_GC)
 writeXStringSet(PrimersCOI, "COI_Soay_Primers.fasta")
 
 
-#### DECIPHER PRIMER DESIGN FAILS for COI
 
+#### DECIPHER PRIMER DESIGN FAILS for COI
+Seqs2DB(COI_Aln, "XStringSet", "/SAN/db/Eimeria_soay_COI_aln.sql",
+        identifier="allID") 
+
+tiles <- TileSeqs("/SAN/db/Eimeria_soay_COI_aln.sql")
 
 
 COIMetaPrimers1 <- DesignPrimers(tiles, annealingTemp=60, minProductSize=300,
