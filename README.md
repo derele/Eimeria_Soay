@@ -27,4 +27,10 @@ a format for "https://www.bioinformatics.org/sms2/primer_map.html"
 primers: "COI_Soay_Primers.fasta". 
 
 
+## 28S Primers
 
+We align sequences from Cow and chicken Eimeria: "28S_aln_clean.fasta"
+is the resulting clean alignement file (without gaps in this case). I
+"manually" designed primers and they can be found in the primer_map
+format in "28S_Soay_primer_map.txt" and fasta in
+"28S_Soay_Primers.fasta".

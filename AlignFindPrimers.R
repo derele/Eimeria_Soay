@@ -145,26 +145,61 @@ sapply(PrimerCOIvec, Tm_GC)
 writeXStringSet(PrimersCOI, "COI_Soay_Primers.fasta")
 
 
+### DESIGN PRIMERS TARGETING 5.8S ITS2 and (beginning of) 28S
+### #############################
+
+
+BL28S <- readDNAStringSet("./NCBI_data/CowChicken_Eimeria28S.fasta")
+
+names(BL28S) <- gsub(".*(Eimeria )(\\w*).*", "E_\\2", names(BL28S))
+
+X28S_Aln <- AlignSeqs(RNAStringSet(BL28S))
+
+writeXStringSet(X28S_Aln, "28S_aln.fasta")
+
+masked_28SALN <- MaskAlignment(X28S_Aln, includeTerminalGaps = TRUE,
+                               maxFractionGaps = 0.1)
+
+X28S_Aln_clean <- as(masked_28SALN, "RNAStringSet")
+
+X28S_Aln_clean <- AdjustAlignment(X28S_Aln_clean)
+
+writeXStringSet(DNAStringSet(X28S_Aln_clean), "28S_aln_clean.fasta")
+
+
+X28Pr <- readLines("28S_Soay_primer_map.txt")
+X28Pr <- lapply(X28Pr, strsplit, " ")
+
+Primer28vec <- unlist(lapply(lapply(X28Pr, "[[", 1), "[", 2))
+
+Primer28vec <- gsub(",", "", Primer28vec)
+
+Primers28 <- DNAStringSet(Primer28vec)
+
+names(Primers28) <- unlist(lapply(lapply(X28Pr, "[[", 1), "[", 1))
+
+writeXStringSet(Primers28, "28S_Soay_Primers.fasta")
+
 
 #### DECIPHER PRIMER DESIGN FAILS for COI
-Seqs2DB(COI_Aln, "XStringSet", "/SAN/db/Eimeria_soay_COI_aln.sql",
-        identifier="allID") 
+## Seqs2DB(COI_Aln, "XStringSet", "/SAN/db/Eimeria_soay_COI_aln.sql",
+##         identifier="allID") 
 
-tiles <- TileSeqs("/SAN/db/Eimeria_soay_COI_aln.sql")
+## tiles <- TileSeqs("/SAN/db/Eimeria_soay_COI_aln.sql")
 
 
-COIMetaPrimers1 <- DesignPrimers(tiles, annealingTemp=60, minProductSize=300,
-                                 maxProductSize=400, numPrimerSets=3,
-                                 minGroupCoverage = 0.9999, maxDistance=0,
-                                 processors=20)
+## COIMetaPrimers1 <- DesignPrimers(tiles, annealingTemp=60, minProductSize=300,
+##                                  maxProductSize=400, numPrimerSets=3,
+##                                  minGroupCoverage = 0.9999, maxDistance=0,
+##                                  processors=20)
 
-COIMetaPrimers2 <- DesignPrimers(tiles, annealingTemp=60, minProductSize=300,
-                                 maxProductSize=400, numPrimerSets=3,
-                                 start=140)
+## COIMetaPrimers2 <- DesignPrimers(tiles, annealingTemp=60, minProductSize=300,
+##                                  maxProductSize=400, numPrimerSets=3,
+##                                  start=140)
 
-COIMetaPrimers3 <- DesignPrimers(tiles, annealingTemp=60, minProductSize=300,
-                                 maxProductSize=400, numPrimerSets=3,
-                                 start=290)
+## COIMetaPrimers3 <- DesignPrimers(tiles, annealingTemp=60, minProductSize=300,
+##                                  maxProductSize=400, numPrimerSets=3,
+##                                  start=290)
 
 
 
