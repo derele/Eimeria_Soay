@@ -42,9 +42,9 @@ ALN_clean <- as(masked_ALN, "RNAStringSet")
 
 ALN_clean <- AdjustAlignment(ALN_clean)
 
-writeXStringSet(ALN_clean, "18S_aln_clean.fasta")
-
 names(ALN_clean) <- gsub(".*(Eimeria )(\\w*).*", "E. \\2", names(ALN_clean))
+
+writeXStringSet(ALN_clean, "18S_aln_clean.fasta")
 
 NJtree <- NJ(DistanceMatrix(ALN_clean))
 
@@ -179,6 +179,35 @@ Primers28 <- DNAStringSet(Primer28vec)
 names(Primers28) <- unlist(lapply(lapply(X28Pr, "[[", 1), "[", 1))
 
 writeXStringSet(Primers28, "28S_Soay_Primers.fasta")
+
+
+### DESIGN PRIMERS TARGETING ORF470... 
+### #############################
+
+ORF470 <- readDNAStringSet("./NCBI_data/Eimeria_ORF470.fasta")
+
+names(ORF470) <- gsub(".*(Eimeria )(\\w*).*", "E_\\2", names(ORF470))
+
+ORF470_Aln <- AlignTranslation(ORF470)
+
+writeXStringSet(ORF470_Aln, "ORF470_Aln.fasta")
+
+
+ORF470Pr <- readLines("ORF470_Soay_primer_map.txt")
+ORF470Pr <- lapply(ORF470Pr, strsplit, " ")
+
+PrimerORF470vec <- unlist(lapply(lapply(ORF470Pr, "[[", 1), "[", 2))
+
+PrimerORF470vec <- gsub(",", "", PrimerORF470vec)
+
+PrimersORF470 <- DNAStringSet(PrimerORF470vec)
+
+names(PrimersORF470) <- unlist(lapply(lapply(ORF470Pr, "[[", 1), "[", 1))
+
+writeXStringSet(PrimersORF470, "ORF470_Soay_Primers.fasta")
+
+
+
 
 
 #### DECIPHER PRIMER DESIGN FAILS for COI

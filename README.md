@@ -2,7 +2,7 @@
 Metabarcoding of Eimeria spp. in Soay Sheep
 
 
-## 18S Primers
+## 18S Primers (nuclear genome)
 
 We first test whether 18S primers bind (perfectly, with no mismatches)
 to all the Soay Eimeria species' 18S in Aligments. We obtained the
@@ -13,7 +13,7 @@ the Soay Eimeria species by having at least one nucleotide difference
 in the amplified sequence. We list for each of the primers species
 that have one difference at least.
 
-## COI Primers
+## COI Primers (mitochondrial genome)
 
 We align the Sequences from NCBI (only one Soay Eimeria species and
 relatives from other ruminants).
@@ -27,10 +27,20 @@ a format for "https://www.bioinformatics.org/sms2/primer_map.html"
 primers: "COI_Soay_Primers.fasta". 
 
 
-## 28S Primers
+## 28S Primers (nuclear genome)
 
-We align sequences from Cow and chicken Eimeria: "28S_aln_clean.fasta"
+We align sequences from cow and chicken Eimeria: "28S_aln_clean.fasta"
 is the resulting clean alignement file (without gaps in this case). I
 "manually" designed primers and they can be found in the primer_map
 format in "28S_Soay_primer_map.txt" and fasta in
-"28S_Soay_Primers.fasta".
+"28S_Soay_Primers.fasta". A screenshot of the primer map is in
+"Figures/Primer_Map_28S.png".
+
+
+## ORF 470 Primers (apicoplast genome)
+
+We align ORF470 sequences from mouse (!) and chicken Eimeria:
+"ORF470_Aln.fasta". I "manually" designed primers and they can be
+found in the primer_map format in "ORF470_Soay_primer_map.txt" and
+fasta in "ORF470_Soay_Primers.fasta". A screenshot of the primer map
+is in "Figures/Primer_Map_ORF470.png".
