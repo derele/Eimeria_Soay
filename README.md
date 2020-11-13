@@ -44,3 +44,10 @@ We align ORF470 sequences from mouse (!) and chicken Eimeria:
 found in the primer_map format in "ORF470_Soay_primer_map.txt" and
 fasta in "ORF470_Soay_Primers.fasta". A screenshot of the primer map
 is in "Figures/Primer_Map_ORF470.png".
+
+
+## 23S apicoplast rRNA
+
+I added an alignment "23S_Aln.fasta"
+
+

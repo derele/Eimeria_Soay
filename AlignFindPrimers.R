@@ -206,6 +206,15 @@ names(PrimersORF470) <- unlist(lapply(lapply(ORF470Pr, "[[", 1), "[", 1))
 
 writeXStringSet(PrimersORF470, "ORF470_Soay_Primers.fasta")
 
+#### 23S apicoplast rRNA
+
+X23S <- readDNAStringSet("./NCBI_data/Eimeria_api23S.fasta")
+
+names(X23S) <- gsub(".*(Eimeria )(\\w*).*", "E_\\2", names(X23S))
+
+X23S_Aln <- DNAStringSet(AlignSeqs(RNAStringSet(X23S)))
+
+writeXStringSet(X23S_Aln, "23S_Aln.fasta")
 
 
 
