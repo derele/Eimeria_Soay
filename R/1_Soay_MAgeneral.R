@@ -1,12 +1,13 @@
 ##Project: Access Array Soay Sheep
-##Script: 1_MA_General
 ##Aim: Sequencing pre-processing and denoising, merge by primer combination.
-##Author: Emanuel Heitlinger mod. by Víctor Hugo Jarquín-Díaz
-##Date: 26.03.2021
+n##Author: Emanuel Heitlinger mod. by Víctor Hugo Jarquín-Díaz
 
+##Call required libraries library(MultiAmplicon,
+## lib.loc="/usr/local/lib/R/site-library/") using the local
+## (devolopment version, if that branch is checked out) of
+## MultiAmplicon
+devtools::load_all("../MultiAmplicon")
 
-##Call required libraries
-library(MultiAmplicon, lib.loc="/usr/local/lib/R/site-library/")
 library(ggplot2)
 library(dada2)
 library(reshape)
@@ -26,13 +27,13 @@ doQualEval <- FALSE
 
 doFilter <- FALSE
 
-doMultiAmpSort <- FALSE
+doMultiAmpSort <- TRUE
 
-doMultiAmpError <- FALSE
+doMultiAmpError <- TRUE
 
-doMultiAmpPipe <- FALSE
+doMultiAmpPipe <- TRUE
 
-doTax <- FALSE
+doTax <- TRUE
 
 doPS<- TRUE
 
@@ -193,7 +194,7 @@ sampleIDs$replicate <- ifelse(grepl("P1", sampleIDs$sampleID),
 ###################MultiAmplicon pipeline#######################
 #Preparation of primer file
 #Primers used in the arrays
-ptable <- read.csv(file = "/SAN/Victors_playground/AA_Soay/data/primer.file.csv",
+ptable <- read.csv(file = "Data/primer.file.csv",
                    sep=",", header=TRUE, stringsAsFactors=FALSE)
 primerF <- ptable[, "Seq_F"]
 primerR <- ptable[, "Seq_R"]
@@ -212,7 +213,6 @@ setdiff(rownames(sampleIDs), rownames(M1@sampleData))
 
 MA <- addSampleData(M1, sampleIDs)
 
-#write.csv(sumSample, file="/SAN/Victors_playground/AA_Soay/output/sequencingOutputBySample.csv")
 
 ##Multi amplicon pipeline
 if(doMultiAmpSort){
@@ -220,10 +220,9 @@ if(doMultiAmpSort){
   if(dir.exists(filedir)) unlink(filedir, recursive=TRUE)
   ## This step sort the reads into amplicons based on the number of primer pairs
   MA <- sortAmplicons(MA, n=1e+07, filedir=filedir) 
-  #pdf("/SAN/Victors_playground/AA_Soay/tmp/overview_all_heat.pdf", width=16, height=61)
-  pheatmap(log10(getRawCounts(MA)+1)) #, 
-  ##          annotation_col=MA@sampleData[, c("run", "reads.in")])
-  #dev.off()
+  ## pdf("Figures/overview_all_heat.pdf", width=16, height=31)
+  ## pheatmap(log10(getRawCounts(MA)+1), show_colnames = FALSE)
+  ## dev.off()
   saveRDS(MA, file="/SAN/Victors_playground/AA_Soay/tmp/MA_sorted.Rds")
 } else {
   MA <- readRDS(file="/SAN/Victors_playground/AA_Soay/tmp/MA_sorted.Rds")
@@ -232,65 +231,31 @@ if(doMultiAmpSort){
 ## separate sample data for each run
 
 if(doMultiAmpError){
-  ## doing things separately per run from here to allow separate error
-  ## profiles per run
-  errorList <- lapply(unique(MA@sampleData$run), function (run) { 
-    i <- which(MA@sampleData$run %in% run)
-    errF <-  learnErrors(unlist(getStratifiedFilesF(MA[, i])), nbase=1e8,
-                         verbose=0, multithread = 12)
-    errR <- learnErrors(unlist(getStratifiedFilesR(MA[, i])), nbase=1e8,
-                        verbose=0, multithread = 12)
-    list(errF, errR)
-  })
-  
-  MAList <- lapply(seq_along(unique(MA@sampleData$run)), function (j) {
-    run <- unique(MA@sampleData$run)[j]
-    i <- which(MA@sampleData$run %in% run)
-    dadaMulti(MA[,i], Ferr=errorList[[j]][[1]],
-              Rerr=errorList[[j]][[2]],  pool=FALSE,
-              verbose=0, mc.cores = 1)
-  })
-  
-  ## combining into one MA object again
-  saveRDS(MAList, file="/SAN/Victors_playground/AA_Soay/tmp/MAList_error.Rds")
+    MAF <- MAF[, getSampleData(MAF)$run%in%"2021_16_soay_Main_Run"]
+
+    ## doing this only for the final run for now
+    MAR <- derepMulti(MAF, mc.cores = 12)
+    MAD <- dadaMulti(MAR, Ferr=NULL, selfConsist=TRUE,
+                     Rerr=NULL,  pool=TRUE,
+                     verbose=0, mc.cores = 12)
+    saveRDS(MAD, file="/SAN/Victors_playground/AA_Soay/tmp/MAD.Rds")
 } else {
-  MAList <- readRDS(file="/SAN/Victors_playground/AA_Soay/tmp/MAList_error.Rds")
+    MAD <- readRDS(file="/SAN/Victors_playground/AA_Soay/tmp/MAD.Rds")
 }
 
 if(doMultiAmpPipe){
-  MAListMerged <- lapply(MAList, mergeMulti, mc.cores=12)
-  ###  so there is a strange error if I concatenate the list before
-  ###  the merging: the dada and derep objects get out of sync. It
-  ###  might be worth to revisit this.
-  #MAMerged <- Reduce("concatenateMultiAmplicon", MAListMerged) ##Reduce is not working, let's separate them 
+  MAM <- mergeMulti(MAD, mc.cores=12)
+  propMerged <- calcPropMerged(MAM)
   
-  MAMerged.1<- MAListMerged[[1]]
-  MAMerged.2<- MAListMerged[[2]]
-  
-  propMerged.1 <- MultiAmplicon::calcPropMerged(MAMerged.1)
-  propMerged.2 <- MultiAmplicon::calcPropMerged(MAMerged.2)
-  
-  MAMerged.1 <- mergeMulti(MAList[[1]], justConcatenate=propMerged.1<0.7)
-  MAMerged.2 <- mergeMulti(MAList[[2]], justConcatenate=propMerged.2<0.7)
-  
-  ##List them again
-  MAListMerged<- list(MAMerged.1, MAMerged.2)
-  
-  #MA <- Reduce("concatenateMultiAmplicon", MAListMerged) # Nop, not working! 
-
-  MA.1 <- makeSequenceTableMulti(MAMerged.1, mc.cores=12)
-  MA.2 <- makeSequenceTableMulti(MAMerged.2, mc.cores=12)
-  MA.1 <- removeChimeraMulti(MA.1, mc.cores=12) 
-  MA.2 <- removeChimeraMulti(MA.2, mc.cores=12)
+  MAM <- mergeMulti(MAM, justConcatenate=propMerged<0.7)
+  MAS <- makeSequenceTableMulti(MAM, mc.cores=12)
+  MA <- removeChimeraMulti(MAS, mc.cores=12) 
   
   ## Removing previous MA that consume a lot of space in RAM
-  rm(MAMerged.1, MAMerged.2, MAListMerged, MAList)
-  
-  saveRDS(MA.1, file="/SAN/Victors_playground/AA_Soay/tmp/MA_piped.1.Rds")
-  saveRDS(MA.2, file="/SAN/Victors_playground/AA_Soay/tmp/MA_piped.2.Rds")
+  ##  rm(MAM, MAS, MAD, MAR, MAF)
+  saveRDS(MA, file="/SAN/Victors_playground/AA_Soay/tmp/MA_piped.Rds")
 } else {
-  MA.1 <- readRDS(file="/SAN/Victors_playground/AA_Soay/tmp/MA_piped.1.Rds")
-  MA.2 <- readRDS(file="/SAN/Victors_playground/AA_Soay/tmp/MA_piped.2.Rds")
+  MA <- readRDS(file="/SAN/Victors_playground/AA_Soay/tmp/MA_piped.Rds")
 }
 
 trackingF <- getPipelineSummary(MA.1) 
