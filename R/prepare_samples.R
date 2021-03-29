@@ -6,6 +6,6 @@ table(ParaData$SAMPLE.REF.%in%DNAData$Tag)
 
 ParaData$SAMPLE.REF[!ParaData$SAMPLE.REF%in%DNAData$Tag]
 
+### For some samples with DNA data we don't have Eimeria counting
 DNAData$Tag[!DNAData$Tag%in%ParaData]
 
-write.csv(sumSample, file="Data/samples.csv")
