@@ -53,5 +53,10 @@ table(unique(SoSeqD$Tag)%in%ParaData$SAMPLE.REF.)
 ## this means all 28 counted samples have been PCRed for sequencing 
 table(ParaData$SAMPLE.REF.%in%unique(SoSeqD$Tag))
 
+DPData<- merge(DNAData, ParaData, by.x="Tag", by.y="SAMPLE.REF.", all.x=TRUE)
 
+### they are also all in seqdata (seq and DNA data are in agreement)
+all(DPData$Tag%in%SeqData$Tag)
 
+AData <- merge(DPData, SeqData, by="Tag")
+rownames(AData) <- AData$Sequencing_ID

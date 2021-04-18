@@ -213,7 +213,6 @@ setdiff(rownames(sampleIDs), rownames(M1@sampleData))
 
 MA <- addSampleData(M1, sampleIDs)
 
-
 ##Multi amplicon pipeline
 if(doMultiAmpSort){
   filedir <- "/SAN/Victors_playground/AA_Soay/tmp/stratified_all"
@@ -231,8 +230,7 @@ if(doMultiAmpSort){
 ## separate sample data for each run
 
 if(doMultiAmpError){
-    MAF <- MAF[, getSampleData(MAF)$run%in%"2021_16_soay_Main_Run"]
-
+    MAF <- MA[, getSampleData(MA)$run%in%"2021_16_soay_Main_Run"]
     ## doing this only for the final run for now
     MAR <- derepMulti(MAF, mc.cores = 12)
     MAD <- dadaMulti(MAR, Ferr=NULL, selfConsist=TRUE,
@@ -258,13 +256,16 @@ if(doMultiAmpPipe){
   MA <- readRDS(file="/SAN/Victors_playground/AA_Soay/tmp/MA_piped.Rds")
 }
 
-trackingF <- getPipelineSummary(MA.1) 
-PipSum <- plotPipelineSummary(trackingF) + scale_y_log10()
-ggsave("/SAN/Victors_playground/AA_Soay/tmp/Pipeline_track_1.pdf", PipSum,height = 15, width = 15) ##Temporal storage
+rownames(MA@sampleData) <- getSampleData(MA)$sampleID
 
-trackingF <- getPipelineSummary(MA.2) 
-PipSum <- plotPipelineSummary(trackingF) + scale_y_log10()
-ggsave("/SAN/Victors_playground/AA_Soay/tmp/Pipeline_track_2.pdf", PipSum,height = 15, width = 15) ##Temporal storage
+## AData from prepare_samples.R <- SOURCE ME!!!
+M <- addSampleData(MA, AData)
+
+## trackingF <- getPipelineSummary(MA) 
+## PipSum <- plotPipelineSummary(trackingF) + scale_y_log10()
+## ggsave("/SAN/Victors_playground/AA_Soay/tmp/Pipeline_track_1.pdf", PipSum,height = 15, width = 15) ##Temporal storage
+
+
 
 ##Lets run BLAST
 if (doTax) {
