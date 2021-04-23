@@ -256,88 +256,241 @@ if(doMultiAmpPipe){
   MA <- readRDS(file="/SAN/Victors_playground/AA_Soay/tmp/MA_piped.Rds")
 }
 
-rownames(MA@sampleData) <- getSampleData(MA)$sampleID
 
-## AData from prepare_samples.R <- SOURCE ME!!!
-M <- addSampleData(MA, AData)
+## ## some very interesting patterns in the 
+## pheatmap(getCounts(getDerepF(MA, dropEmpty=FALSE), what="input"))
 
-## trackingF <- getPipelineSummary(MA) 
-## PipSum <- plotPipelineSummary(trackingF) + scale_y_log10()
-## ggsave("/SAN/Victors_playground/AA_Soay/tmp/Pipeline_track_1.pdf", PipSum,height = 15, width = 15) ##Temporal storage
+## pheatmap(getCounts(getDerepF(MA, dropEmpty=FALSE), what="uniques"))
 
+## pheatmap(getCounts(getMergers(MA, dropEmpty=FALSE),
+## what="uniques"))
+
+## pheatmap(getCounts(getSequenceTableNoChime(MA, dropEmpty=FALSE),
+## what="uniques"))
+
+## pheatmap(log10(getCounts(getSequenceTableNoChime(MA,
+## dropEmpty=FALSE), what="uniques")+0.1))
 
 
 ##Lets run BLAST
 if (doTax) {
-  MA.1 <- blastTaxAnnot(MA.1,
-                        db = "/SAN/db/blastdb/nt/nt",
-                        negative_gilist = "/SAN/db/blastdb/uncultured.gi",
-                        infasta = "/SAN/Victors_playground/AA_Soay/output/Soay_1_in.fasta",
-                        outblast = "/SAN/Victors_playground/AA_Soay/output/Soay_1_out.blt",
-                        taxonSQL = "/SAN/db/taxonomy/taxonomizr.sql", 
-                        num_threads = 20)
-
-  MA.2 <- blastTaxAnnot(MA.2,
-                        db = "/SAN/db/blastdb/nt/nt",
-                        negative_gilist = "/SAN/db/blastdb/uncultured.gi",
-                        infasta = "/SAN/Victors_playground/AA_Soay/output/Soay_2_in.fasta",
-                        outblast = "/SAN/Victors_playground/AA_Soay/output/Soay_2_out.blt",
-                        taxonSQL = "/SAN/db/taxonomy/taxonomizr.sql", 
-                        num_threads = 20)  
-  saveRDS(MA.1, file="/SAN/Victors_playground/AA_Soay/output/MultiAmpliconTaxa_Soay_1.Rds") ###Results from full run 
-  saveRDS(MA.2, file="/SAN/Victors_playground/AA_Soay/output/MultiAmpliconTaxa_Soay_2.Rds") ###Results from test run 
-  
-  plotAmpliconNumbers(MA.1)
-  plotAmpliconNumbers(MA.2)
+  M <- blastTaxAnnot(MA,
+                     ### against a very old database
+                     db = "/SAN/db/blastdb/nt/nt",
+                     negative_gilist = "/SAN/db/blastdb/uncultured.gi",
+                     infasta =
+                         "/SAN/Victors_playground/AA_Soay/output/Soay_1_in.fasta",
+                     outblast =
+                         "/SAN/Victors_playground/AA_Soay/output/Soay_1_out.blt",
+                     taxonSQL = "/SAN/db/taxonomy/taxonomizr.sql", 
+                     num_threads = 20)
+  saveRDS(M, file="/SAN/Victors_playground/AA_Soay/tmp/Mtaxed.Rds")
 }else{
-  MA.1<- readRDS(file="/SAN/Victors_playground/AA_Soay/output/MultiAmpliconTaxa_Soay_1.Rds")
-  MA.2<- readRDS(file="/SAN/Victors_playground/AA_Soay/output/MultiAmpliconTaxa_Soay_2.Rds")   
-  }
-
-if (doPS) {
-  ##Create individual Phyloseq objects 
-  PS.1 <- toPhyloseq(MA.1, samples=colnames(MA.1))
-  PS.2 <- toPhyloseq(MA.2, samples=colnames(MA.2))
-  
-  ##Separated list of primers
-  PS.1.l <- toPhyloseq(MA.1, samples=colnames(MA.1), multi2Single = F) 
-  
-  ##PS.2.l <- toPhyloseq(MA.2, samples=colnames(MA.2), multi2Single = F)
-  ##Error in access(object, "otu_table", errorIfNULL) : 
-  ##otu_table slot is empty.
-  
-  ##Merge Phyloseq objects into a single 
-  PS <- merge_phyloseq(PS.1, PS.2) 
-  
-  ##Store it for further analysis
-  saveRDS(PS, file="/SAN/Victors_playground/AA_Soay/output/PhyloSeqCombi_Soay.Rds") ###Results from full + test run 
+    M <- readRDS(file="/SAN/Victors_playground/AA_Soay/tmp/Mtaxed.Rds")
 }
 
-###Get rowcounts by primer pair 
-rawcounts.1 <- rowSums(getRawCounts(MA.1))
-rawcounts.1 <- data.frame(rawcounts.1)
-rawcounts.1[,2] <- rownames(rawcounts.1)
-colnames(rawcounts.1) <- c("Raw_counts_Main", "Primer_name")
-rownames(rawcounts.1) <- c(1:nrow(rawcounts.1))
-rawcounts.1 <- data.frame(Primer_name = rawcounts.1$Primer_name, Raw_counts_Main = rawcounts.1$Raw_counts_Main) ###change the order of the columns
-rawcounts.1$Primer_name <- gsub(pattern = " ", replacement = "", x = rawcounts.1$Primer_name)
-rawcounts.1$Primer_name <- gsub(pattern = "-", replacement = "_", x = rawcounts.1$Primer_name)
 
-rawcounts.2 <- rowSums(getRawCounts(MA.2))
-rawcounts.2 <- data.frame(rawcounts.2)
-rawcounts.2[,2] <- rownames(rawcounts.2)
-colnames(rawcounts.2) <- c("Raw_counts_Test", "Primer_name")
-rownames(rawcounts.2) <- c(1:nrow(rawcounts.2))
-rawcounts.2 <- data.frame(Primer_name = rawcounts.2$Primer_name, Raw_counts_Test = rawcounts.2$Raw_counts_Test) ###change the order of the columns
-rawcounts.2$Primer_name <- gsub(pattern = " ", replacement = "", x = rawcounts.2$Primer_name)
-rawcounts.2$Primer_name <- gsub(pattern = "-", replacement = "_", x = rawcounts.2$Primer_name)
+## the second line should automatically adjust in the whole data
+## structure in the package?!!
+MS <- M
+rownames(MS@sampleData) <- getSampleData(MS)$sampleID
+colnames(MS) <- rownames(getSampleData(MS))
 
-plyr::join(rawcounts.1, rawcounts.2, by= "Primer_name")-> rawcounts
+## AData from prepare_samples.R <- SOURCE ME!!!
+source("R/prepare_samples.R")
 
-rawcounts%>%
-  rowwise()%>%
-  mutate(Total_reads = sum(Raw_counts_Main, Raw_counts_Test))-> rawcounts
+MS <- addSampleData(MS, AData)
 
-rm(PS.1, PS.1.l, PS.2, rawcounts.1, rawcounts.2, MA.1, MA.2, propMerged.1, propMerged.2, 
-   fastqList, filter, filter.track, PipSum, primer, ptable, samplesList, files, filt_path, filtFs,
-   filtRs, fullpath, M1, MA, MAList,path, primerF, primerR, samplesAll, fastqFall, fastqRall, trackingF)
+## This should also be automatic!!!
+MS <- MS[, colnames(MS)%in%rownames(getSampleData(MS))]
+
+pheatmap(getCounts(getDerepF(M, dropEmpty=FALSE), what="input"))
+
+pheatmap(getCounts(getDerepF(M, dropEmpty=FALSE), what="uniques"))
+
+pheatmap(getCounts(getMergers(M, dropEmpty=FALSE), what="uniques"))
+
+## With the renamed MS this doesn't work! Here for MA
+pheatmap(log10(getCounts(getSequenceTable(M, dropEmpty=FALSE),
+                         what="uniques")+1))
+
+pheatmap(log10(getCounts(getSequenceTableNoChime(M, dropEmpty=FALSE),
+                         what="uniques")+1))
+
+## ## Working with M for now, which is missing the additional sample Data
+##   plotAmpliconNumbers(M)
+
+doPS <- TRUE
+if (doPS) {
+    ##Create individual Phyloseq objects 
+    PS <- toPhyloseq(M, samples=colnames(M))
+    ##Separated list of primers
+    PS.l <- toPhyloseq(M, samples=colnames(M), multi2Single = FALSE) 
+    ##Store it for further analysis
+    ## saveRDS(PS, file="/SAN/Victors_playground/AA_Soay/tmp/PS_merge_Soay.Rds")
+    ## saveRDS(PS.l, file="/SAN/Victors_playground/AA_Soay/tmp/PS_list_Soay.Rds") 
+}
+
+
+addSD <- function (ps) {
+    S <- sample_data(ps)
+    attr(S, "class") <- "data.frame"
+    SM <- merge(S, AData, by.x="sampleID", by.y="row.names", all.x=TRUE)
+    rownames(SM) <- SM$sampleID
+    O <- otu_table(ps)
+    rownames(O) <- gsub("2021_16_soay_Main_Run_", "", rownames(O))
+    SM <- SM[rownames(O),]
+    tt <- slot(ps, "tax_table")
+    if(!is.null(tt) & all(dim(tt))>0){
+        phyloseq(otu_table(O),
+                 sample_data(SM),
+                 tax_table(tt))
+    } else {
+        phyloseq(otu_table(O),
+                 sample_data(SM))
+    }
+}
+
+PS <- addSD(PS)
+
+P.l <- lapply(PS.l, function (x) {    
+    S <- x
+    if(!is.null(S)&length(S)>0){
+        addSD(S)
+    } else {S}
+})
+
+P.l <- P.l[!unlist(lapply(P.l, is.null))]
+
+## melt the phyloseq object for each amplicon
+P.m <- mclapply(P.l, function (x){
+    if(!is.null(x)){
+        phyloseq::psmelt(x)
+    } else {NA}
+}, mc.cores=10)
+
+
+saveRDS(PS, file="/home/ele/PS.Rds")
+
+saveRDS(P.m, file="/home/ele/Pm.Rds")
+
+saveRDS(M, file="/home/ele/M.Rds")
+        
+        
+### investigate how in all world it can happen that only some
+### annotation levels are missing!
+annTaxa <- c("superkingdom", "phylum", "order", "class", "family", "genus", "species")
+
+## dumping the stuff without tax annotation for now
+has.tax.an <- unlist(lapply(P.m, function (x) all(annTaxa%in%colnames(x))))
+names(P.m)[!has.tax.an]
+## the ORF470 and one Eimeria 28S primer didn't get any tax annotation
+## but also very few reads
+lapply(P.m[!has.tax.an], function(x) sum(x$Abundance))
+lapply(P.m[!has.tax.an], function(x) x[x$Abundance>0, "Sample"])
+##  ORF primers amplified only in samples named PB02, PB01, PB04, PB05
+## and the E. falcifomris controls
+
+##  28S primer amplified in a few more of the Soay and the
+## E. falcifomris controls: on further inspection 
+## mod28F1_149_F.mod28R5_153_R:
+table(P.m[["mod28F1_149_F.mod28R5_153_R"]][, "species"])
+## has only weird fungus amplified
+
+## Add the primer name to each molten df
+Pn <- lapply(seq_along(P.m), function (i){
+    cbind(P.m[[i]], primer=names(P.m)[[i]])
+})
+
+## and remove the ones without tax annotation (the ORF470 ones)
+Pn <- Pn[has.tax.an]
+
+### tidyverse FUN!
+library(tidyverse)
+## put all in one giant tibble
+Ptab <- as_tibble(Reduce(rbind, Pn))
+
+Ptab %>%
+    group_by(primer) %>%
+    summarise(n_ASVs = n_distinct(OTU),
+              n_Samples = n_distinct(Sample[Abundance>0]),
+              tot_counts = sum(Abundance),
+              tot_species = n_distinct(species),
+              tot_genera = n_distinct(genus),
+              tot_families = n_distinct(family),
+              tot_orders = n_distinct(order),
+              tot_class = n_distinct(class),
+              tot_phyla = n_distinct(phylum),
+              n_Api_ASVs = n_distinct(OTU[phylum%in%"Apicomplexa"]),
+              n_Api_Samples = n_distinct(Sample[Abundance>0 &
+                                                phylum%in%"Apicomplexa"]),
+              Api_counts = sum(Abundance[phylum%in%"Apicomplexa"]),
+              Api_species = n_distinct(species[phylum%in%"Apicomplexa"]),
+              Api_prop = sum(Abundance[phylum%in%"Apicomplexa"])/sum(Abundance),
+              Eim_species = n_distinct(species[genus%in%"Eimeria"]),
+              n_Eim_ASVs = n_distinct(OTU[genus%in%"Eimeria"]),
+              ) %>%
+    arrange(desc(n_Api_ASVs)) ->
+    primer.table
+
+colnames(primer.table)
+
+ggplot(primer.table, aes(n_Eim_ASVs, n_Samples,
+                         size=log(tot_counts), color=tot_phyla)) +
+    geom_point()
+
+
+
+countASVsby <- function (x, what){
+        group_by(!!what, primer) %>%
+        summarise(n_ASVs = n_distinct(OTU),
+                  n_Samples = n_distinct(Sample[Abundance>0]),
+                  tot_counts = sum(Abundance)) %>%
+        arrange(desc(n_ASVs)) 
+}
+
+
+countASVsbyList <- function (L, what){
+    LL <- lapply(L, function (x) {
+        if(what%in%colnames(x)){
+            countASVsby(x, sym(what))
+        } else{NA}
+    })
+    LLg <- LL[unlist(lapply(LL, is.data.frame))]
+    ## add the name to the df
+    LLg <- lapply(seq_along(LLg), function (i){
+        cbind(LLg[[i]], primer=names(LLg)[[i]])
+    })
+    Reduce(rbind, LLg)
+}
+
+    
+
+phylum.tab <- countASVsbyList(P.m, "phylum")
+family.tab <- countASVsbyList(P.m, "family")
+species.tab <- countASVsbyList(P.m, "species")
+
+
+api.primer <- subset(phylum.tab, phylum%in%"Apicomplexa")[, "primer"]
+nem.primer <- subset(phylum.tab, phylum%in%"Nematoda")[, "primer"]
+
+## ggplot(subset(family.tab, primer%in%api.primer), 
+
+as_tibble(phylum.tab) %>%
+    group_by(primer) %>%
+    summarise(Api_ASVs = sum(n_ASVs[phylum%in%"Apicomplexa"]),
+              n_Samples = n_distinct(Sample[Abundance>0]),
+              tot_counts = sum(Abundance)) %>%
+       
+
+
+soay <- c("E. ahsata", "E. bakuensis", "E. crandallis", "E. faurei",
+          "E. granulosa", "E. intricata", "E. marsica",
+          "E. ovinoidalis", "E. pallida", "E. parva",
+          "E. weybridgensis")
+
+soayE <- gsub("E\\.", "Eimeria", soay)
+
+as_tibble(Eimeriadf) %>%
+    group_by(species) %>% summarize(Sabu=sum(Abundance)) %>%
+    arrange(Sabu) %>% transform(isSheep=species%in%soayE) %>% as.data.frame()
