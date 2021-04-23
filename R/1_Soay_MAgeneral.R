@@ -27,15 +27,15 @@ doQualEval <- FALSE
 
 doFilter <- FALSE
 
-doMultiAmpSort <- TRUE
+doMultiAmpSort <- FALSE
 
-doMultiAmpError <- TRUE
+doMultiAmpError <- FALSE
 
-doMultiAmpPipe <- TRUE
+doMultiAmpPipe <- FALSE
 
-doTax <- TRUE
+doTax <- FALSE
 
-doPS<- TRUE
+doPS <- FALSE
 
 ###################dada2 pipeline#######################
 
@@ -320,61 +320,60 @@ pheatmap(log10(getCounts(getSequenceTableNoChime(M, dropEmpty=FALSE),
 ## ## Working with M for now, which is missing the additional sample Data
 ##   plotAmpliconNumbers(M)
 
-doPS <- TRUE
+
 if (doPS) {
     ##Create individual Phyloseq objects 
     PS <- toPhyloseq(M, samples=colnames(M))
     ##Separated list of primers
     PS.l <- toPhyloseq(M, samples=colnames(M), multi2Single = FALSE) 
-    ##Store it for further analysis
-    ## saveRDS(PS, file="/SAN/Victors_playground/AA_Soay/tmp/PS_merge_Soay.Rds")
-    ## saveRDS(PS.l, file="/SAN/Victors_playground/AA_Soay/tmp/PS_list_Soay.Rds") 
-}
 
 
-addSD <- function (ps) {
-    S <- sample_data(ps)
-    attr(S, "class") <- "data.frame"
-    SM <- merge(S, AData, by.x="sampleID", by.y="row.names", all.x=TRUE)
-    rownames(SM) <- SM$sampleID
-    O <- otu_table(ps)
-    rownames(O) <- gsub("2021_16_soay_Main_Run_", "", rownames(O))
-    SM <- SM[rownames(O),]
-    tt <- slot(ps, "tax_table")
-    if(!is.null(tt) & all(dim(tt))>0){
-        phyloseq(otu_table(O),
-                 sample_data(SM),
-                 tax_table(tt))
-    } else {
-        phyloseq(otu_table(O),
-                 sample_data(SM))
+    addSD <- function (ps) {
+        S <- sample_data(ps)
+        attr(S, "class") <- "data.frame"
+        SM <- merge(S, AData, by.x="sampleID", by.y="row.names", all.x=TRUE)
+        rownames(SM) <- SM$sampleID
+        O <- otu_table(ps)
+        rownames(O) <- gsub("2021_16_soay_Main_Run_", "", rownames(O))
+        SM <- SM[rownames(O),]
+        tt <- slot(ps, "tax_table")
+        if(!is.null(tt) & all(dim(tt))>0){
+            phyloseq(otu_table(O),
+                     sample_data(SM),
+                     tax_table(tt))
+        } else {
+            phyloseq(otu_table(O),
+                     sample_data(SM))
+        }
     }
+
+    PS <- addSD(PS)
+
+    P.l <- lapply(PS.l, function (x) {    
+        S <- x
+        if(!is.null(S)&length(S)>0){
+            addSD(S)
+        } else {S}
+    })
+
+    P.l <- P.l[!unlist(lapply(P.l, is.null))]
+
+    ## melt the phyloseq object for each amplicon
+    P.m <- mclapply(P.l, function (x){
+        if(!is.null(x)){
+            phyloseq::psmelt(x)
+        } else {NA}
+    }, mc.cores=10)
+    ## saves for the RAM problem on harriet
+    saveRDS(PS, file="/home/ele/PS.Rds")
+    saveRDS(P.m, file="/home/ele/Pm.Rds")
+    saveRDS(M, file="/home/ele/M.Rds")
+} else {
+    PS <- readRDS(file="/home/ele/PS.Rds")
+    P.m <- readRDS(file="/home/ele/Pm.Rds")
+    M  <- readRDS(M, file="/home/ele/M.Rds")
 }
 
-PS <- addSD(PS)
-
-P.l <- lapply(PS.l, function (x) {    
-    S <- x
-    if(!is.null(S)&length(S)>0){
-        addSD(S)
-    } else {S}
-})
-
-P.l <- P.l[!unlist(lapply(P.l, is.null))]
-
-## melt the phyloseq object for each amplicon
-P.m <- mclapply(P.l, function (x){
-    if(!is.null(x)){
-        phyloseq::psmelt(x)
-    } else {NA}
-}, mc.cores=10)
-
-
-saveRDS(PS, file="/home/ele/PS.Rds")
-
-saveRDS(P.m, file="/home/ele/Pm.Rds")
-
-saveRDS(M, file="/home/ele/M.Rds")
         
         
 ### investigate how in all world it can happen that only some
