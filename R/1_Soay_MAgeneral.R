@@ -21,6 +21,10 @@ library(tidyr)
 library(dplyr)
 library(ShortRead)
 
+## AData from prepare_samples.R
+source("R/prepare_samples.R")
+
+
 ## re-run or use pre-computed results for different parts of the pipeline:
 ## Set to FALSE to use pre-computed and saved results, TRUE to redo analyses.
 doQualEval <- FALSE
@@ -296,9 +300,6 @@ MS <- M
 rownames(MS@sampleData) <- getSampleData(MS)$sampleID
 colnames(MS) <- rownames(getSampleData(MS))
 
-## AData from prepare_samples.R <- SOURCE ME!!!
-source("R/prepare_samples.R")
-
 MS <- addSampleData(MS, AData)
 
 ## This should also be automatic!!!
@@ -412,6 +413,7 @@ Ptab <- as_tibble(Reduce(rbind, Pn))
 Ptab %>%
     group_by(primer) %>%
     summarise(n_ASVs = n_distinct(OTU),
+              mean_length = mean(nchar(OTU)),
               n_Samples = n_distinct(Sample[Abundance>0]),
               tot_counts = sum(Abundance),
               tot_species = n_distinct(species),
@@ -428,68 +430,52 @@ Ptab %>%
               Api_prop = sum(Abundance[phylum%in%"Apicomplexa"])/sum(Abundance),
               Eim_species = n_distinct(species[genus%in%"Eimeria"]),
               n_Eim_ASVs = n_distinct(OTU[genus%in%"Eimeria"]),
-              ) %>%
+              .) %>%
     arrange(desc(n_Api_ASVs)) ->
     primer.table
 
+
+ptable$onename <- paste(ptable$Name_F, ptable$Name_R, sep=".")
+
+primer.table <-inner_join(ptable, primer.table, by=c("onename" ="primer"))
+
 colnames(primer.table)
 
-ggplot(primer.table, aes(n_Eim_ASVs, n_Samples,
-                         size=log(tot_counts), color=tot_phyla)) +
-    geom_point()
+
+theme_set(theme_bw())
+
+pdf("Figures/sizes.pdf")
+ggplot(primer.table, aes(mean_length, tot_counts, label=Gen)) +
+    geom_point(aes(color=Gen, size=n_ASVs)) +
+    scale_y_log10() + 
+    stat_smooth(method="lm", se=FALSE) +
+    geom_text(check_overlap = FALSE, nudge_y=0.06) 
+dev.off()
+
+
+pdf("Figures/sizesEASVs.pdf")
+ggplot(primer.table, aes(mean_length, tot_counts,
+                         label=n_Eim_ASVs)) +
+    geom_point(aes(color=Gen, size=n_Eim_ASVs)) +
+    scale_y_log10() + 
+    stat_smooth(method="lm", se=FALSE) +
+    geom_text(check_overlap = FALSE, nudge_y=0.06) 
+dev.off()
+
+
+pdf("Figures/sizeSamples.pdf")
+ggplot(primer.table, aes(tot_counts, n_Samples)) +
+        geom_point(aes(color=Gen, size=n_Eim_ASVs)) +
+    scale_y_log10() 
+dev.off()
+
+
+pdf("Figures/EASVsEspec.pdf")
+ggplot(primer.table, aes(n_Eim_ASVs,
+                         Eim_species)) +
+    geom_point(aes(color=Gen, size=tot_counts)) +
+    stat_smooth(method="lm", se=FALSE) 
+dev.off()
 
 
 
-countASVsby <- function (x, what){
-        group_by(!!what, primer) %>%
-        summarise(n_ASVs = n_distinct(OTU),
-                  n_Samples = n_distinct(Sample[Abundance>0]),
-                  tot_counts = sum(Abundance)) %>%
-        arrange(desc(n_ASVs)) 
-}
-
-
-countASVsbyList <- function (L, what){
-    LL <- lapply(L, function (x) {
-        if(what%in%colnames(x)){
-            countASVsby(x, sym(what))
-        } else{NA}
-    })
-    LLg <- LL[unlist(lapply(LL, is.data.frame))]
-    ## add the name to the df
-    LLg <- lapply(seq_along(LLg), function (i){
-        cbind(LLg[[i]], primer=names(LLg)[[i]])
-    })
-    Reduce(rbind, LLg)
-}
-
-    
-
-phylum.tab <- countASVsbyList(P.m, "phylum")
-family.tab <- countASVsbyList(P.m, "family")
-species.tab <- countASVsbyList(P.m, "species")
-
-
-api.primer <- subset(phylum.tab, phylum%in%"Apicomplexa")[, "primer"]
-nem.primer <- subset(phylum.tab, phylum%in%"Nematoda")[, "primer"]
-
-## ggplot(subset(family.tab, primer%in%api.primer), 
-
-as_tibble(phylum.tab) %>%
-    group_by(primer) %>%
-    summarise(Api_ASVs = sum(n_ASVs[phylum%in%"Apicomplexa"]),
-              n_Samples = n_distinct(Sample[Abundance>0]),
-              tot_counts = sum(Abundance)) %>%
-       
-
-
-soay <- c("E. ahsata", "E. bakuensis", "E. crandallis", "E. faurei",
-          "E. granulosa", "E. intricata", "E. marsica",
-          "E. ovinoidalis", "E. pallida", "E. parva",
-          "E. weybridgensis")
-
-soayE <- gsub("E\\.", "Eimeria", soay)
-
-as_tibble(Eimeriadf) %>%
-    group_by(species) %>% summarize(Sabu=sum(Abundance)) %>%
-    arrange(Sabu) %>% transform(isSheep=species%in%soayE) %>% as.data.frame()
