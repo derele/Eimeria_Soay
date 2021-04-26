@@ -305,7 +305,9 @@ MS <- addSampleData(MS, AData)
 ## This should also be automatic!!!
 MS <- MS[, colnames(MS)%in%rownames(getSampleData(MS))]
 
-pheatmap(getCounts(getDerepF(M, dropEmpty=FALSE), what="input"))
+pdf("Figures/pipeline_heatmapInput.pdf", width=16, height=16)
+pheatmap(log10(getCounts(getDerepF(M, dropEmpty=FALSE), what="input")+1))
+dev.off()
 
 pheatmap(getCounts(getDerepF(M, dropEmpty=FALSE), what="uniques"))
 
@@ -315,8 +317,10 @@ pheatmap(getCounts(getMergers(M, dropEmpty=FALSE), what="uniques"))
 pheatmap(log10(getCounts(getSequenceTable(M, dropEmpty=FALSE),
                          what="uniques")+1))
 
+pdf("Figures/pipeline_heatmapOutput.pdf", width=16, height=16)
 pheatmap(log10(getCounts(getSequenceTableNoChime(M, dropEmpty=FALSE),
                          what="uniques")+1))
+dev.off()
 
 ## ## Working with M for now, which is missing the additional sample Data
 ##   plotAmpliconNumbers(M)
@@ -415,6 +419,12 @@ Ptab %>%
     summarise(n_ASVs = n_distinct(OTU),
               mean_length = mean(nchar(OTU)),
               n_Samples = n_distinct(Sample[Abundance>0]),
+              n_Eim_Samples = n_distinct(Sample[Abundance>0 &
+                                                genus %in% "Eimeria"]),
+              n_Eim_Soay_Samples = n_distinct(Sample[Abundance>0 &
+                                                     genus %in% "Eimeria" &
+                                                     Sample_Origin %in% "Soay_Sheep"
+                                                     ]),
               tot_counts = sum(Abundance),
               tot_species = n_distinct(species),
               tot_genera = n_distinct(genus),
@@ -463,12 +473,21 @@ ggplot(primer.table, aes(mean_length, tot_counts,
 dev.off()
 
 
+
 pdf("Figures/sizeSamples.pdf")
 ggplot(primer.table, aes(tot_counts, n_Samples)) +
-        geom_point(aes(color=Gen, size=n_Eim_ASVs)) +
-    scale_y_log10() 
+        geom_point(aes(color=Gen, size=n_Eim_ASVs)) 
 dev.off()
 
+pdf("Figures/sizeEimSamples.pdf")
+ggplot(primer.table, aes(tot_counts, n_Eim_Samples)) +
+        geom_point(aes(color=Gen, size=n_Eim_ASVs)) 
+dev.off()
+
+pdf("Figures/sizeEimSoaySamples.pdf")
+ggplot(primer.table, aes(tot_counts, n_Eim_Soay_Samples)) +
+        geom_point(aes(color=Gen, size=n_Eim_ASVs)) 
+dev.off()
 
 pdf("Figures/EASVsEspec.pdf")
 ggplot(primer.table, aes(n_Eim_ASVs,
