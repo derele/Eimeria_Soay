@@ -1,6 +1,6 @@
 ##Project: Access Array Soay Sheep
 ##Aim: Sequencing pre-processing and denoising, merge by primer combination.
-n##Author: Emanuel Heitlinger mod. by Víctor Hugo Jarquín-Díaz
+##Author: Emanuel Heitlinger mod. by Víctor Hugo Jarquín-Díaz
 
 ##Call required libraries library(MultiAmplicon,
 ## lib.loc="/usr/local/lib/R/site-library/") using the local
@@ -24,6 +24,11 @@ library(ShortRead)
 ## AData from prepare_samples.R
 source("R/prepare_samples.R")
 
+## let's keep track of the names of Eimeria Soay species
+soay <- c("E. ahsata", "E. bakuensis", "E. crandallis", "E. faurei",
+          "E. granulosa", "E. intricata", "E. marsica",
+          "E. ovinoidalis", "E. pallida", "E. parva",
+          "E. weybridgensis")
 
 ## re-run or use pre-computed results for different parts of the pipeline:
 ## Set to FALSE to use pre-computed and saved results, TRUE to redo analyses.
@@ -496,5 +501,82 @@ ggplot(primer.table, aes(n_Eim_ASVs,
     stat_smooth(method="lm", se=FALSE) 
 dev.off()
 
+
+### So now let's get all the OTUs for the high diversity Eimeria
+### amplicon
+
+
+primer.table %>% filter(n_Eim_ASVs > 55 &
+                        Eim_species > 5) 
+
+## let's decide for the primer above...
+
+filter(Ptab, primer%in%"EimSS_131F_157_F.EimSS_473R_160_R") %>%
+    filter(genus%in%"Eimeria" &
+           Sample_Origin %in% "Soay_Sheep") %>%
+    group_by(OTU) %>% 
+    summarize(abundance = sum(Abundance),
+              nSamples =  n_distinct(Sample[Abundance>0]),
+              species = unique(species)) %>%
+    filter(abundance>5 & nSamples > 1) %>% 
+    transform(species = gsub("imeria ", ". ", species)) %>%
+    transform(origin = "SEQ") %>%
+    transform(seqName = 1:nrow(.)) ->
+    Eim1stFrame
+
+## now together with the 18S aligment from R/AlignFindPrimers.R
+db.seq <- as_tibble(
+    cbind(OTU=as.character(RemoveGaps(ALN_clean)),
+          species=names(ALN_clean)))
+
+db.seq %>%
+    transform(abundance = 1) %>%
+    transform(nSamples = 1) %>%
+    transform(origin = "NCBInt") %>%
+    rbind(Eim1stFrame[,colnames(.)]) %>%
+    transform(soay = ifelse(species%in%soay, "Soay", "Other")) %>%
+    transform(seqName = make.unique(paste0(species, "_", soay))) ->
+    Eim1stFrame
+
+
+Eim1stFrame %>%
+    pull(OTU, seqName)   -> Eim18S1stSeq
+
+Eim18S1stSeq <- RNAStringSet(gsub("T", "U", Eim18S1stSeq))
+
+Eim1stAln <- AlignSeqs(Eim18S1stSeq)
+
+## have a look
+DistanceMatrix(Eim1stAln)[1, ]
+
+badSeq <- DistanceMatrix(Eim1stAln)[1, ] > 0.2
+
+Eim1stAln <- Eim1stAln[!badSeq]
+
+NJtree <- NJ(DistanceMatrix(Eim1stAln))
+
+Eim1stFrame %>%
+    filter(seqName %in% NJtree$tip.label) %>%
+    relocate(seqName) ->
+    Eim1stFrame
+
+
+## tip.groups <- NJtree$tip.label
+## names(tip.groups) <- Eim1stFrame$soay
+## NJtree <- groupOTU(NJtree, tip.groups)
+
+t <- ggtree(NJtree)
+
+p <- facet_plot(t+xlim_tree(0.2), panel='log10(abundance)',
+                data=Eim1stFrame, geom=geom_segment,
+                aes(x=0, xend=log10(abundance), y=y, yend=y, color=nSamples), 
+                size=3) 
+
+
+### Plot a tree
+pdf("Figures/18SEimSoaytree.pdf", height=10, width=16)
+p + geom_tiplab(color=ifelse(Eim1stFrame$origin%in%"SEQ", "salmon", "steelblue")) +
+    theme_tree2()
+dev.off()
 
 

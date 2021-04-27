@@ -3,6 +3,7 @@ library(ggtree)
 library(phangorn)
 library(pheatmap)
 library(parallel)
+library(Biostrings)
 
 ## Soay Eimeria species from CRAIG et al. doi:10.1017/S0031182006001144
 soay <- c("E. ahsata", "E. bakuensis", "E. crandallis", "E. faurei",
@@ -59,6 +60,8 @@ ggtree(NJtree, root.position=25) +
     geom_tiplab(aes(color = label %in% soay) )
 
 dev.off()
+
+
 
 ### The goal here is to test the existing primers. Get them from the
 ### latest Hyena project
