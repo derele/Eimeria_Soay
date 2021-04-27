@@ -505,7 +505,6 @@ dev.off()
 ### So now let's get all the OTUs for the high diversity Eimeria
 ### amplicon
 
-
 primer.table %>% filter(n_Eim_ASVs > 55 &
                         Eim_species > 5) 
 
@@ -576,6 +575,458 @@ p <- facet_plot(t+xlim_tree(0.2), panel='log10(abundance)',
 ### Plot a tree
 pdf("Figures/18SEimSoaytree.pdf", height=10, width=16)
 p + geom_tiplab(color=ifelse(Eim1stFrame$origin%in%"SEQ", "salmon", "steelblue")) +
+    theme_tree2()
+dev.off()
+
+
+### So now let's get all the OTUs for the deeply sequenced average diversity Eimeria
+### amplicon
+
+primer.table %>% filter(Gen %in% "18S" &
+                        Eim_species == 3) 
+
+## let's decide for the primer above...
+
+filter(Ptab, primer%in%"wang1141_13_F.Nem_0425_6_3_R") %>%
+    filter(genus%in%"Eimeria" &
+           Sample_Origin %in% "Soay_Sheep") %>%
+    group_by(OTU) %>% 
+    summarize(abundance = sum(Abundance),
+              nSamples =  n_distinct(Sample[Abundance>0]),
+              species = unique(species)) %>%
+    filter(abundance>5 & nSamples > 1) %>% 
+    transform(species = gsub("imeria ", ". ", species)) %>%
+    transform(origin = "SEQ") %>%
+    transform(seqName = 1:nrow(.)) ->
+    Eim2ndFrame
+
+## now together with the 18S aligment from R/AlignFindPrimers.R
+db.seq <- as_tibble(
+    cbind(OTU=as.character(RemoveGaps(ALN_clean)),
+          species=names(ALN_clean)))
+
+db.seq %>%
+    transform(abundance = 1) %>%
+    transform(nSamples = 1) %>%
+    transform(origin = "NCBInt") %>%
+    rbind(Eim2ndFrame[,colnames(.)]) %>%
+    transform(soay = ifelse(species%in%soay, "Soay", "Other")) %>%
+    transform(seqName = make.unique(paste0(species, "_", soay))) ->
+    Eim2ndFrame
+
+
+Eim2ndFrame %>%
+    pull(OTU, seqName)   -> Eim18S2ndSeq
+
+Eim18S2ndSeq <- RNAStringSet(gsub("T", "U", Eim18S2ndSeq))
+
+Eim2ndAln <- AlignSeqs(Eim18S2ndSeq)
+
+## have a look
+DistanceMatrix(Eim2ndAln)[1, ]
+
+badSeq <- DistanceMatrix(Eim2ndAln)[1, ] > 0.2
+
+Eim2ndAln[badSeq] <- reverseComplement(Eim2ndAln[badSeq])
+
+Eim2ndAln <- AlignSeqs(RemoveGaps(Eim2ndAln))
+
+NJtree <- NJ(DistanceMatrix(Eim2ndAln))
+
+Eim2ndFrame %>%
+    filter(seqName %in% NJtree$tip.label) %>%
+    relocate(seqName) ->
+    Eim2ndFrame
+
+
+## tip.groups <- NJtree$tip.label
+## names(tip.groups) <- Eim2ndFrame$soay
+## NJtree <- groupOTU(NJtree, tip.groups)
+
+t <- ggtree(NJtree)
+
+p <- facet_plot(t+xlim_tree(0.2), panel='log10(abundance)',
+                data=Eim2ndFrame, geom=geom_segment,
+                aes(x=0, xend=log10(abundance), y=y, yend=y, color=nSamples), 
+                size=3) 
+
+
+### Plot a tree
+pdf("Figures/18SEimSoaytree2nd.pdf", height=10, width=16)
+p + geom_tiplab(color=ifelse(Eim2ndFrame$origin%in%"SEQ", "salmon", "steelblue")) +
+    theme_tree2()
+dev.off()
+
+
+### So now let's get all the OTUs for the medium deeply sequenced average diversity Eimeria
+### amplicon
+
+primer.table %>% filter(Gen %in% "18S" &
+                        Eim_species == 4) 
+
+## let's decide for the primer above...
+
+filter(Ptab, primer%in%"18S_0067a_deg_5Mod_52_F.NSR399_5Mod_52_R") %>%
+    filter(genus%in%"Eimeria" &
+           Sample_Origin %in% "Soay_Sheep") %>%
+    group_by(OTU) %>% 
+    summarize(abundance = sum(Abundance),
+              nSamples =  n_distinct(Sample[Abundance>0]),
+              species = unique(species)) %>%
+    filter(abundance>5 & nSamples > 1) %>% 
+    transform(species = gsub("imeria ", ". ", species)) %>%
+    transform(origin = "SEQ") %>%
+    transform(seqName = 1:nrow(.)) ->
+    Eim3rdFrame
+
+
+### as this has shown itself to be the best primer
+filter(Ptab, primer%in%"18S_0067a_deg_5Mod_52_F.NSR399_5Mod_52_R") %>%
+    group_by(phylum) %>%
+    summarize(abundance = sum(Abundance),
+              ASVs = n_distinct(species)) %>%
+    write.csv(file="best_18S_phyla.csv")
+
+
+## now together with the 18S aligment from R/AlignFindPrimers.R
+db.seq <- as_tibble(
+    cbind(OTU=as.character(RemoveGaps(ALN_clean)),
+          species=names(ALN_clean)))
+
+db.seq %>%
+    transform(abundance = 1) %>%
+    transform(nSamples = 1) %>%
+    transform(origin = "NCBInt") %>%
+    rbind(Eim3rdFrame[,colnames(.)]) %>%
+    transform(soay = ifelse(species%in%soay, "Soay", "Other")) %>%
+    transform(seqName = make.unique(paste0(species, "_", soay))) ->
+    Eim3rdFrame
+
+
+Eim3rdFrame %>%
+    pull(OTU, seqName)   -> Eim18S3rdSeq
+
+Eim18S3rdSeq <- RNAStringSet(gsub("T", "U", Eim18S3rdSeq))
+
+Eim3rdAln <- AlignSeqs(Eim18S3rdSeq)
+
+## have a look
+DistanceMatrix(Eim3rdAln)[1, ]
+
+badSeq <- DistanceMatrix(Eim3rdAln)[1, ] > 0.2
+
+Eim3rdAln[badSeq] <- reverseComplement(Eim3rdAln[badSeq])
+
+Eim3rdAln <- AlignSeqs(RemoveGaps(Eim3rdAln))
+
+NJtree <- NJ(DistanceMatrix(Eim3rdAln))
+
+Eim3rdFrame %>%
+    filter(seqName %in% NJtree$tip.label) %>%
+    relocate(seqName) ->
+    Eim3rdFrame
+
+
+## tip.groups <- NJtree$tip.label
+## names(tip.groups) <- Eim3rdFrame$soay
+## NJtree <- groupOTU(NJtree, tip.groups)
+
+t <- ggtree(NJtree)
+
+p <- facet_plot(t+xlim_tree(0.2), panel='log10(abundance)',
+                data=Eim3rdFrame, geom=geom_segment,
+                aes(x=0, xend=log10(abundance), y=y, yend=y, color=nSamples), 
+                size=3) 
+
+
+### Plot a tree
+pdf("Figures/18SEimSoaytree3rd.pdf", height=10, width=16)
+p + geom_tiplab(color=ifelse(Eim3rdFrame$origin%in%"SEQ", "salmon", "steelblue")) +
+    theme_tree2()
+dev.off()
+
+
+primer.table %>% filter(Gen %in% "18S" &
+                        Region %in% "V1-V2") 
+
+
+## let's decide for the primer above...
+
+filter(Ptab, primer%in%"MarkN_10_F.Euk360_CR_21_R") %>%
+    filter(genus%in%"Eimeria" &
+           Sample_Origin %in% "Soay_Sheep") %>%
+    group_by(OTU) %>% 
+    summarize(abundance = sum(Abundance),
+              nSamples =  n_distinct(Sample[Abundance>0]),
+              species = unique(species)) %>%
+    filter(abundance>5 & nSamples > 1) %>% 
+    transform(species = gsub("imeria ", ". ", species)) %>%
+    transform(origin = "SEQ") %>%
+    transform(seqName = 1:nrow(.)) ->
+    Eim4thFrame
+
+## now together with the 18S aligment from R/AlignFindPrimers.R
+db.seq <- as_tibble(
+    cbind(OTU=as.character(RemoveGaps(ALN_clean)),
+          species=names(ALN_clean)))
+
+db.seq %>%
+    transform(abundance = 1) %>%
+    transform(nSamples = 1) %>%
+    transform(origin = "NCBInt") %>%
+    rbind(Eim4thFrame[,colnames(.)]) %>%
+    transform(soay = ifelse(species%in%soay, "Soay", "Other")) %>%
+    transform(seqName = make.unique(paste0(species, "_", soay))) ->
+    Eim4thFrame
+
+
+Eim4thFrame %>%
+    pull(OTU, seqName)   -> Eim18S4thSeq
+
+Eim18S4thSeq <- RNAStringSet(gsub("T", "U", Eim18S4thSeq))
+
+Eim4thAln <- AlignSeqs(Eim18S4thSeq)
+
+## have a look
+DistanceMatrix(Eim4thAln)[1, ]
+
+badSeq <- DistanceMatrix(Eim4thAln)[1, ] > 0.2
+
+Eim4thAln[badSeq] <- reverseComplement(Eim4thAln[badSeq])
+
+Eim4thAln <- AlignSeqs(RemoveGaps(Eim4thAln))
+
+NJtree <- NJ(DistanceMatrix(Eim4thAln))
+
+Eim4thFrame %>%
+    filter(seqName %in% NJtree$tip.label) %>%
+    relocate(seqName) ->
+    Eim4thFrame
+
+
+## tip.groups <- NJtree$tip.label
+## names(tip.groups) <- Eim4thFrame$soay
+## NJtree <- groupOTU(NJtree, tip.groups)
+
+t <- ggtree(NJtree)
+
+p <- facet_plot(t+xlim_tree(0.2), panel='log10(abundance)',
+                data=Eim4thFrame, geom=geom_segment,
+                aes(x=0, xend=log10(abundance), y=y, yend=y, color=nSamples), 
+                size=3) 
+
+
+### Plot a tree
+pdf("Figures/18SEimSoaytree4th.pdf", height=10, width=16)
+p + geom_tiplab(color=ifelse(Eim4thFrame$origin%in%"SEQ", "salmon", "steelblue")) +
+    theme_tree2()
+dev.off()
+
+
+
+primer.table %>% filter(Gen %in% "COI")
+
+
+## let's decide for the primer above...
+
+filter(Ptab, primer%in%"modFW11_147_F.modRev10_147_R") %>%
+    filter(genus%in%"Eimeria" &
+           Sample_Origin %in% "Soay_Sheep") %>%
+    group_by(OTU) %>% 
+    summarize(abundance = sum(Abundance),
+              nSamples =  n_distinct(Sample[Abundance>0]),
+              species = unique(species)) %>%
+    filter(abundance>5 & nSamples > 1) %>% 
+    transform(species = gsub("imeria ", ". ", species)) %>%
+    transform(origin = "SEQ") %>%
+    transform(seqName = 1:nrow(.)) ->
+    Eim5thFrame
+
+## now together with the COI aligment from R/AlignFindPrimers.R
+db.seq <- as_tibble(
+    cbind(OTU=as.character(RemoveGaps(COI_Aln)),
+          species=names(COI_Aln)))
+
+db.seq %>%
+    transform(abundance = 1) %>%
+    transform(nSamples = 1) %>%
+    transform(origin = "NCBInt") %>%
+    rbind(Eim5thFrame[,colnames(.)]) %>%
+    transform(soay = ifelse(species%in%soay, "Soay", "Other")) %>%
+    transform(seqName = make.unique(paste0(species, "_", soay))) ->
+    Eim5thFrame
+
+
+Eim5thFrame %>%
+    pull(OTU, seqName)   -> EimCOI5thSeq
+
+EimCOI5thSeq <- DNAStringSet(EimCOI5thSeq)
+
+Eim5thAln <- AlignSeqs(EimCOI5thSeq)
+
+## have a look
+DistanceMatrix(Eim5thAln)[1, ]
+
+badSeq <- DistanceMatrix(Eim5thAln)[1, ] > 0.2
+
+NJtree <- NJ(DistanceMatrix(Eim5thAln))
+
+Eim5thFrame %>%
+    filter(seqName %in% NJtree$tip.label) %>%
+    relocate(seqName) ->
+    Eim5thFrame
+
+
+## tip.groups <- NJtree$tip.label
+## names(tip.groups) <- Eim5thFrame$soay
+## NJtree <- groupOTU(NJtree, tip.groups)
+
+t <- ggtree(NJtree)
+
+p <- facet_plot(t+xlim_tree(0.2), panel='log10(abundance)',
+                data=Eim5thFrame, geom=geom_segment,
+                aes(x=0, xend=log10(abundance), y=y, yend=y, color=nSamples), 
+                size=3) 
+
+
+### Plot a tree
+pdf("Figures/COIEimSoaytree5th.pdf", height=10, width=16)
+p + geom_tiplab(color=ifelse(Eim5thFrame$origin%in%"SEQ", "salmon", "steelblue")) +
+    theme_tree2()
+dev.off()
+
+
+filter(Ptab, primer%in%"modFW4_141_F.modRev4_145_R") %>%
+    filter(genus%in%"Eimeria" &
+           Sample_Origin %in% "Soay_Sheep") %>%
+    group_by(OTU) %>% 
+    summarize(abundance = sum(Abundance),
+              nSamples =  n_distinct(Sample[Abundance>0]),
+              species = unique(species)) %>%
+    filter(abundance>5 & nSamples > 1) %>% 
+    transform(species = gsub("imeria ", ". ", species)) %>%
+    transform(origin = "SEQ") %>%
+    transform(seqName = 1:nrow(.)) ->
+    Eim6thFrame
+
+## now together with the COI aligment from R/AlignFindPrimers.R
+db.seq <- as_tibble(
+    cbind(OTU=as.character(RemoveGaps(COI_Aln)),
+          species=names(COI_Aln)))
+
+db.seq %>%
+    transform(abundance = 1) %>%
+    transform(nSamples = 1) %>%
+    transform(origin = "NCBInt") %>%
+    rbind(Eim6thFrame[,colnames(.)]) %>%
+    transform(soay = ifelse(species%in%soay, "Soay", "Other")) %>%
+    transform(seqName = make.unique(paste0(species, "_", soay))) ->
+    Eim6thFrame
+
+
+Eim6thFrame %>%
+    pull(OTU, seqName)   -> EimCOI6thSeq
+
+EimCOI6thSeq <- DNAStringSet(EimCOI6thSeq)
+
+Eim6thAln <- AlignSeqs(EimCOI6thSeq)
+
+## have a look
+DistanceMatrix(Eim6thAln)[1, ]
+
+NJtree <- NJ(DistanceMatrix(Eim6thAln))
+
+Eim6thFrame %>%
+    filter(seqName %in% NJtree$tip.label) %>%
+    relocate(seqName) ->
+    Eim6thFrame
+
+
+## tip.groups <- NJtree$tip.label
+## names(tip.groups) <- Eim6thFrame$soay
+## NJtree <- groupOTU(NJtree, tip.groups)
+
+t <- ggtree(NJtree)
+
+p <- facet_plot(t+xlim_tree(0.2), panel='log10(abundance)',
+                data=Eim6thFrame, geom=geom_segment,
+                aes(x=0, xend=log10(abundance), y=y, yend=y, color=nSamples), 
+                size=3) 
+
+
+### Plot a tree
+pdf("Figures/COIEimSoaytree6th.pdf", height=10, width=16)
+p + geom_tiplab(color=ifelse(Eim6thFrame$origin%in%"SEQ", "salmon", "steelblue")) +
+    theme_tree2()
+dev.off()
+
+primer.table %>% filter(Gen %in% "23S")
+
+
+## let's decide for the primer above...
+
+filter(Ptab, primer%in%"Mit23S_731F_165_F.Mit23S_1088R_169_R") %>%
+    filter(genus%in%"Eimeria" &
+           Sample_Origin %in% "Soay_Sheep") %>%
+    group_by(OTU) %>% 
+    summarize(abundance = sum(Abundance),
+              nSamples =  n_distinct(Sample[Abundance>0]),
+              species = unique(species)) %>%
+    filter(abundance>5 & nSamples > 1) %>% 
+    transform(species = gsub("imeria ", ". ", species)) %>%
+    transform(origin = "SEQ") %>%
+    transform(seqName = 1:nrow(.)) ->
+    Eim6thFrame
+
+## now together with the 23S aligment from R/AlignFindPrimers.R
+db.seq <- as_tibble( 
+    cbind(OTU=as.character(RemoveGaps(X23S_Aln)),
+          species=names(X23S_Aln)))
+
+db.seq %>%
+    transform(abundance = 1) %>%
+    transform(nSamples = 1) %>%
+    transform(origin = "NCBInt") %>%
+    rbind(Eim6thFrame[,colnames(.)]) %>%
+    transform(soay = ifelse(species%in%soay, "Soay", "Other")) %>%
+    transform(seqName = make.unique(paste0(species, "_", soay))) ->
+    Eim6thFrame
+
+
+Eim6thFrame %>%
+    pull(OTU, seqName)   -> Eim23S6thSeq
+
+Eim23S6thSeq <- DNAStringSet(Eim23S6thSeq)
+
+Eim6thAln <- AlignSeqs(Eim23S6thSeq)
+
+## have a look
+DistanceMatrix(Eim6thAln)[1, ]
+
+badSeq <- DistanceMatrix(Eim6thAln)[1, ] > 0.2
+
+NJtree <- NJ(DistanceMatrix(Eim6thAln))
+
+Eim6thFrame %>%
+    filter(seqName %in% NJtree$tip.label) %>%
+    relocate(seqName) ->
+    Eim6thFrame
+
+
+## tip.groups <- NJtree$tip.label
+## names(tip.groups) <- Eim6thFrame$soay
+## NJtree <- groupOTU(NJtree, tip.groups)
+
+t <- ggtree(NJtree)
+
+p <- facet_plot(t+xlim_tree(0.2), panel='log10(abundance)',
+                data=Eim6thFrame, geom=geom_segment,
+                aes(x=0, xend=log10(abundance), y=y, yend=y, color=nSamples), 
+                size=3) 
+
+### Plot a tree
+pdf("Figures/23SEimSoaytree6th.pdf", height=10, width=16)
+p + geom_tiplab(color=ifelse(Eim6thFrame$origin%in%"SEQ", "salmon", "steelblue")) +
     theme_tree2()
 dev.off()
 
