@@ -684,7 +684,8 @@ filter(Ptab, primer%in%"18S_0067a_deg_5Mod_52_F.NSR399_5Mod_52_R") %>%
 filter(Ptab, primer%in%"18S_0067a_deg_5Mod_52_F.NSR399_5Mod_52_R") %>%
     group_by(phylum) %>%
     summarize(abundance = sum(Abundance),
-              ASVs = n_distinct(species)) %>%
+              genera = n_distinct(genus),
+              ASVs = n_distinct(OTU)) %>%
     write.csv(file="best_18S_phyla.csv")
 
 
