@@ -687,7 +687,7 @@ filter(Ptab, primer%in%"18S_0067a_deg_5Mod_52_F.NSR399_5Mod_52_R") %>%
               genera = n_distinct(genus),
               ASVs = n_distinct(OTU)) %>%
     write.csv(file="best_18S_phyla.csv")
-
+### Lol the Nematode (one) species is Syphacia obvelata
 
 ## now together with the 18S aligment from R/AlignFindPrimers.R
 db.seq <- as_tibble(
@@ -977,7 +977,7 @@ filter(Ptab, primer%in%"Mit23S_731F_165_F.Mit23S_1088R_169_R") %>%
     transform(species = gsub("imeria ", ". ", species)) %>%
     transform(origin = "SEQ") %>%
     transform(seqName = 1:nrow(.)) ->
-    Eim6thFrame
+    Eim7thFrame
 
 ## now together with the 23S aligment from R/AlignFindPrimers.R
 db.seq <- as_tibble( 
@@ -988,47 +988,73 @@ db.seq %>%
     transform(abundance = 1) %>%
     transform(nSamples = 1) %>%
     transform(origin = "NCBInt") %>%
-    rbind(Eim6thFrame[,colnames(.)]) %>%
+    rbind(Eim7thFrame[,colnames(.)]) %>%
     transform(soay = ifelse(species%in%soay, "Soay", "Other")) %>%
     transform(seqName = make.unique(paste0(species, "_", soay))) ->
-    Eim6thFrame
+    Eim7thFrame
 
 
-Eim6thFrame %>%
-    pull(OTU, seqName)   -> Eim23S6thSeq
+Eim7thFrame %>%
+    pull(OTU, seqName)   -> Eim23S7thSeq
 
-Eim23S6thSeq <- DNAStringSet(Eim23S6thSeq)
+Eim23S7thSeq <- DNAStringSet(Eim23S7thSeq)
 
-Eim6thAln <- AlignSeqs(Eim23S6thSeq)
+Eim7thAln <- AlignSeqs(Eim23S7thSeq)
 
 ## have a look
-DistanceMatrix(Eim6thAln)[1, ]
+DistanceMatrix(Eim7thAln)[1, ]
 
-badSeq <- DistanceMatrix(Eim6thAln)[1, ] > 0.2
+badSeq <- DistanceMatrix(Eim7thAln)[1, ] > 0.2
 
-NJtree <- NJ(DistanceMatrix(Eim6thAln))
+NJtree <- NJ(DistanceMatrix(Eim7thAln))
 
-Eim6thFrame %>%
+Eim7thFrame %>%
     filter(seqName %in% NJtree$tip.label) %>%
     relocate(seqName) ->
-    Eim6thFrame
+    Eim7thFrame
 
 
 ## tip.groups <- NJtree$tip.label
-## names(tip.groups) <- Eim6thFrame$soay
+## names(tip.groups) <- Eim7thFrame$soay
 ## NJtree <- groupOTU(NJtree, tip.groups)
 
 t <- ggtree(NJtree)
 
 p <- facet_plot(t+xlim_tree(0.2), panel='log10(abundance)',
-                data=Eim6thFrame, geom=geom_segment,
+                data=Eim7thFrame, geom=geom_segment,
                 aes(x=0, xend=log10(abundance), y=y, yend=y, color=nSamples), 
                 size=3) 
 
 ### Plot a tree
-pdf("Figures/23SEimSoaytree6th.pdf", height=10, width=16)
-p + geom_tiplab(color=ifelse(Eim6thFrame$origin%in%"SEQ", "salmon", "steelblue")) +
+pdf("Figures/23SEimSoaytree7th.pdf", height=10, width=16)
+p + geom_tiplab(color=ifelse(Eim7thFrame$origin%in%"SEQ", "salmon", "steelblue")) +
     theme_tree2()
 dev.off()
 
 
+###################### CORRELATION ANALYSIS #####################
+
+filter(Ptab, primer%in%"modFW11_147_F.modRev10_147_R") %>%
+    filter(OTU %in% pull(Eim5thFrame, OTU))   %>%
+    select(OTU, Abundance, sampleID, Tag, starts_with("E..")) %>%
+    group_by(Tag) %>%
+    mutate(SAbundance=sum(Abundance)) %>%
+    ungroup() %>% as_tibble() %>%
+    select(-sampleID, -Abundance) %>% unique() %>%
+    spread(OTU, SAbundance) %>%
+    mutate(
+        across(everything(), ~replace_na(.x, 0))
+    ) %>%
+    select(which(colSums(. > 0) > 5)) %>%
+    rename_with( ~ gsub("\\.\\.", "", .x)) %>%
+    rename_with( ~ make.unique(substr(.x, 1, 4))) ->
+    COI.1wide
+
+
+library(corrr)
+
+COI.1cor <- correlate(select(COI.1wide, -Tag))
+
+COI.1cor[is.na(COI.1cor)] <- 1
+              
+plot(COI.1cor)
